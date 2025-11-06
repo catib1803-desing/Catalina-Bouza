@@ -3,52 +3,90 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mapa de Rappi Turbos</title>
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <title>Mapa</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
     body {
       margin: 0;
       font-family: system-ui, sans-serif;
       background: #fafafa;
-      color: #333;
       display: flex;
       flex-direction: column;
       height: 100vh;
+      color: #333;
+    }
+    header {
+      padding: 10px 15px;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+      color: #ff6600;
+    }
+    header form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+      width: 100%;
+    }
+    input, select, button {
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    button {
+      background: #ff6600;
+      color: #fff;
+      cursor: pointer;
+      border: none;
     }
     #map {
       flex: 1;
-      border-top: 1px solid #ddd;
     }
     #list {
+      background: #fff;
       padding: 10px;
+      border-top: 1px solid #ddd;
+      max-height: 35vh;
       overflow-y: auto;
-      max-height: 40vh;
     }
     .item {
-      background: #fff;
-      margin-bottom: 8px;
-      padding: 8px 12px;
-      border-radius: 6px;
-      box-shadow: 0 0 4px rgba(0,0,0,0.05);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    button {
-      background: none;
-      border: none;
-      color: #ff6600;
-      font-size: 18px;
+      padding: 6px 0;
+      border-bottom: 1px solid #eee;
       cursor: pointer;
+    }
+    .item:hover {
+      background: #fff6ef;
     }
   </style>
 </head>
 <body>
-  <div id="list"></div>
+  <header>
+    <div>
+      <h1>Mapa</h1>
+      <form onsubmit="agregarLugar(event)">
+        <input type="text" id="nombre" placeholder="Nombre del lugar" required>
+        <input type="text" id="direccion" placeholder="Dirección (CABA...)" required>
+        <select id="tipo">
+          <option value="Rappi Turbo">Rappi Turbo</option>
+          <option value="Otro">Otro</option>
+        </select>
+        <button type="submit">Agregar</button>
+        <button type="button" onclick="localizarUsuario()">📍 Mi ubicación</button>
+      </form>
+    </div>
+  </header>
+
   <div id="map"></div>
+  <div id="list"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
@@ -63,19 +101,21 @@
     });
 
     const places = [
-      { name: "Rappi Turbo Almagro", direccion: "Tte. Gral. Juan Domingo Perón 3341, C1198, CABA" },
-      { name: "Rappi Turbo San Juan", direccion: "Av. San Juan 3536, C1233ABS, CABA" },
-      { name: "Rappi Turbo San Martin", direccion: "Av. San Martín 2011, Villa Gral. Mitre, CABA" },
-      { name: "Rappi Turbo Humboldt", direccion: "Humboldt 1877, Palermo, CABA" },
-      { name: "Rappi Turbo Forest", direccion: "Av. Forest 930, CABA" },
-      { name: "Rappi Turbo Caballito", direccion: "Del Barco Centenera 193, C1424AMC, CABA" },
-      { name: "Rappi Turbo Lavalle", direccion: "Lavalle 2124, C1051ABH, CABA" },
-      { name: "Rappi Turbo Las Heras", direccion: "Av. Gral. Las Heras 2299, Recoleta, CABA" },
-      { name: "Rappi Turbo Baez", direccion: "Báez 243, Las Cañitas, CABA" },
-      { name: "Rappi Turbo Monroe", direccion: "Av. Monroe 1616, esquina Montañeses, Belgrano, CABA" },
-      { name: "Rappi Turbo Belgrano", direccion: "Av. Belgrano 1154, C1092AAY, CABA" },
-      { name: "Rappi Turbo Rivadavia", direccion: "Av. Rivadavia 8242, C1407DYR, CABA" }
+      { name: "Rappi Turbo Almagro", direccion: "Tte. Gral. Juan Domingo Perón 3341, C1198, CABA", tipo: "Rappi Turbo" },
+      { name: "Rappi Turbo San Juan", direccion: "Av. San Juan 3536, C1233ABS, CABA", tipo: "Rappi Turbo" },
+      { name: "Rappi Turbo San Martin", direccion: "Av. San Martín 2011, Villa Gral. Mitre, CABA", tipo: "Rappi Turbo" },
+      { name: "Rappi Turbo Humboldt", direccion: "Humboldt 1877, Palermo, CABA", tipo: "Rappi Turbo" },
+      { name: "Rappi Turbo Forest", direccion: "Av. Forest 930, CABA", tipo: "Rappi Turbo" },
+      { name: "Rappi Turbo Caballito", direccion: "Del Barco Centenera 193, C1424AMC, CABA", tipo: "Rappi Turbo" },
+      { name: "Rappi Turbo Lavalle", direccion: "Lavalle 2124, C1051ABH, CABA", tipo: "Rappi Turbo" },
+      { name: "Rappi Turbo Las Heras", direccion: "Av. Gral. Las Heras 2299, Recoleta, CABA", tipo: "Rappi Turbo" },
+      { name: "Rappi Turbo Baez", direccion: "Báez 243, Las Cañitas, CABA", tipo: "Rappi Turbo" },
+      { name: "Rappi Turbo Monroe", direccion: "Av. Monroe 1616, esquina Montañeses, Belgrano, CABA", tipo: "Rappi Turbo" },
+      { name: "Rappi Turbo Belgrano", direccion: "Av. Belgrano 1154, C1092AAY, CABA", tipo: "Rappi Turbo" },
+      { name: "Rappi Turbo Rivadavia", direccion: "Av. Rivadavia 8242, C1407DYR, CABA", tipo: "Rappi Turbo" }
     ];
+
+    const markers = [];
 
     async function buscarDireccion(direccion) {
       const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion)}, Buenos Aires`;
@@ -89,8 +129,10 @@
       for (const place of places) {
         const coords = await buscarDireccion(place.direccion);
         if (!coords) continue;
-        const marker = L.marker([coords.lat, coords.lng], { icon: orangeIcon }).addTo(map);
-        marker.bindPopup(`<b>${place.name}</b><br>${place.direccion}`);
+        const marker = L.marker([coords.lat, coords.lng], { icon: orangeIcon })
+          .addTo(map)
+          .bindPopup(`<b>${place.name}</b><br>${place.direccion}<br><i>${place.tipo}</i>`);
+        markers.push({ ...place, marker });
       }
       renderList();
     }
@@ -98,30 +140,55 @@
     function renderList() {
       const listDiv = document.getElementById("list");
       listDiv.innerHTML = "";
-      places.forEach((p, index) => {
+      markers.forEach((p, i) => {
         const div = document.createElement("div");
         div.className = "item";
-        div.innerHTML = `
-          <div>
-            <strong>${p.name}</strong><br>
-            <small>${p.direccion}</small>
-          </div>
-          <button onclick="borrarLugar(${index})">❌</button>
-        `;
+        div.innerHTML = `<strong>${p.name}</strong><br><small>${p.direccion}</small>`;
+        div.onclick = () => {
+          map.setView(p.marker.getLatLng(), 16);
+          p.marker.openPopup();
+        };
         listDiv.appendChild(div);
       });
     }
 
-    function borrarLugar(index) {
-      places.splice(index, 1);
-      document.getElementById("list").innerHTML = "";
-      map.eachLayer(layer => {
-        if (layer instanceof L.Marker) map.removeLayer(layer);
+    async function agregarLugar(event) {
+      event.preventDefault();
+      const nombre = document.getElementById("nombre").value.trim();
+      const direccion = document.getElementById("direccion").value.trim();
+      const tipo = document.getElementById("tipo").value;
+
+      const coords = await buscarDireccion(direccion);
+      if (!coords) {
+        alert("No se encontró la dirección. Intentalo con más detalle.");
+        return;
+      }
+
+      const marker = L.marker([coords.lat, coords.lng], { icon: orangeIcon })
+        .addTo(map)
+        .bindPopup(`<b>${nombre}</b><br>${direccion}<br><i>${tipo}</i>`);
+      markers.push({ name: nombre, direccion, tipo, marker });
+      renderList();
+
+      document.getElementById("nombre").value = "";
+      document.getElementById("direccion").value = "";
+    }
+
+    function localizarUsuario() {
+      if (!navigator.geolocation) {
+        alert("Tu navegador no soporta geolocalización.");
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(pos => {
+        const { latitude, longitude } = pos.coords;
+        L.marker([latitude, longitude], { icon: orangeIcon })
+          .addTo(map)
+          .bindPopup("📍 Estás acá")
+          .openPopup();
+        map.setView([latitude, longitude], 15);
+      }, err => {
+        alert("No se pudo obtener tu ubicación.");
       });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19
-      }).addTo(map);
-      cargarLugares();
     }
 
     cargarLugares();
