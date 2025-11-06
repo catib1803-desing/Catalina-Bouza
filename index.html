@@ -1,240 +1,134 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Mapa - Turbos (geocodificado y cacheado)</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mapa Rappi Turbo</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-  html,body{height:100%;margin:0;font-family:Arial,Helvetica,sans-serif;background:#f2f6f9}
-  #map{height:75vh;width:100%}
-  .panel{padding:12px;background:#fff;border-radius:10px;margin:10px auto;max-width:420px;box-shadow:0 6px 18px rgba(0,0,0,0.08)}
-  input,select,button,textarea{width:100%;padding:8px;margin-top:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box}
-  small{color:#666}
-  .row{display:flex;gap:8px}
-  .row > *{flex:1}
+  html,body{height:100%;margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#fff;color:#333;}
+  #map{height:70vh;width:100%;border-top:1px solid #eee;}
+  .panel{padding:12px 14px;text-align:center;}
+  h2{margin:0 0 8px 0;font-size:18px;}
+  input,button{width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid #ddd;box-sizing:border-box;font-size:15px;}
+  button{background:#ff7f11;color:white;border:none;font-weight:600;}
+  button:active{opacity:0.7;}
+  ul{list-style:none;padding:0;margin:10px auto;max-width:450px;text-align:left;}
+  li{padding:8px;border-bottom:1px solid #f0f0f0;cursor:pointer;}
+  li:hover{background:#fff7f0;}
+  small{color:#777;font-size:13px;}
 </style>
 </head>
 <body>
 
 <div class="panel">
-  <h3 style="margin:0 0 6px 0">Mapa Rappi Turbo - Almacenado</h3>
-  <small>Poné dirección y tocá "Agregar por dirección" o esperá que carguen las direcciones predefinidas.</small>
-
-  <input id="nombre" placeholder="Nombre (ej: Rappi Turbo Almagro)" />
-  <input id="direccion" placeholder="Dirección (ej: Av. Corrientes 1000, Buenos Aires)" />
-  <select id="tipo">
-    <option value="turbo">Turbo (Rappi)</option>
-    <option value="otro">Otro</option>
-  </select>
-  <div class="row">
-    <button id="btnAddDir">Agregar por dirección</button>
-    <button id="btnAddCoords">Agregar por coords</button>
-  </div>
-  <input id="lat" placeholder="Latitud (solo para coords)" />
-  <input id="lng" placeholder="Longitud (solo para coords)" />
-  <div class="row">
-    <button id="btnExport">Exportar JSON</button>
-    <button id="btnImport">Importar JSON</button>
-  </div>
-  <div class="row">
-    <button id="btnForce">Forzar re-geocodificar (borrar cache)</button>
-    <button id="btnClear">Borrar todo</button>
-  </div>
-  <small id="status">Estado: esperando...</small>
+  <h2>Mapa Rappi Turbo</h2>
+  <input id="nombre" placeholder="Nombre (ej: Nuevo Turbo)">
+  <input id="direccion" placeholder="Dirección (ej: Av. Corrientes 1000, CABA)">
+  <button id="btnAdd">Agregar dirección</button>
 </div>
+
+<ul id="lista"></ul>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* ------------------- CONFIG ------------------- */
-const STORAGE_KEY = 'mi_mapa_turbos_v1';
-// Lista original de direcciones (las que me pediste)
+const STORAGE_KEY = 'rappi_turbos_minimal_v1';
 const initialPlaces = [
-  { name: "Rappi Turbo Almagro", direccion: "Tte. Gral. Juan Domingo Perón 3341, C1198 Cdad. Autónoma de Buenos Aires" },
-  { name: "Rappi Turbo San Juan", direccion: "Av. San Juan 3536, C1233ABS, Cdad. Autónoma de Buenos Aires" },
-  { name: "Rappi Turbo San Martin", direccion: "Av. S. Martín 2011, C1416, Cdad. Autónoma de Buenos Aires" },
-  { name: "Rappi Turbo Humboldt", direccion: "Humboldt 1877, C1414, Cdad. Autónoma de Buenos Aires" },
-  { name: "Rappi Turbo Forest", direccion: "Av. Forest 930, C1427, Cdad. Autónoma de Buenos Aires" },
-  { name: "Rappi Turbo Caballito", direccion: "Del Barco Centenera 193, C1424, Cdad. Autónoma de Buenos Aires" },
-  { name: "Rappi Turbo Lavalle", direccion: "Lavalle 2124, C1051, Cdad. Autónoma de Buenos Aires" },
-  { name: "Rappi Turbo Las Heras", direccion: "Av. Gral. Las Heras 2299, C1127, Cdad. Autónoma de Buenos Aires" },
-  { name: "Rappi Turbo Baez", direccion: "Báez 243, C1426, Cdad. Autónoma de Buenos Aires" },
-  { name: "Rappi Turbo Monroe", direccion: "Av. Monroe 1616, C1428, Cdad. Autónoma de Buenos Aires" },
-  { name: "Rappi Turbo Belgrano", direccion: "Av. Belgrano 1154, C1092, Cdad. Autónoma de Buenos Aires" },
-  { name: "Rappi Turbo Rivadavia", direccion: "Av. Rivadavia 8242, C1407, Cdad. Autónoma de Buenos Aires" }
+  { name: "Rappi Turbo Almagro", direccion: "Tte. Gral. Juan Domingo Perón 3341, C1198, CABA" },
+  { name: "Rappi Turbo San Juan", direccion: "Av. San Juan 3536, C1233ABS, CABA" },
+  { name: "Rappi Turbo San Martin", direccion: "Av. S. Martín 2011, C1416, CABA" },
+  { name: "Rappi Turbo Humboldt", direccion: "Humboldt 1877, C1414, CABA" },
+  { name: "Rappi Turbo Forest", direccion: "Av. Forest 930, C1427, CABA" },
+  { name: "Rappi Turbo Caballito", direccion: "Del Barco Centenera 193, C1424, CABA" },
+  { name: "Rappi Turbo Lavalle", direccion: "Lavalle 2124, C1051, CABA" },
+  { name: "Rappi Turbo Las Heras", direccion: "Av. Gral. Las Heras 2299, C1127, CABA" },
+  { name: "Rappi Turbo Baez", direccion: "Báez 243, C1426, CABA" },
+  { name: "Rappi Turbo Monroe", direccion: "Av. Monroe 1616, C1428, CABA" },
+  { name: "Rappi Turbo Belgrano", direccion: "Av. Belgrano 1154, C1092, CABA" },
+  { name: "Rappi Turbo Rivadavia", direccion: "Av. Rivadavia 8242, C1407, CABA" }
 ];
-/* ---------------------------------------------- */
 
-const statusEl = document.getElementById('status');
-function setStatus(t){ statusEl.textContent = 'Estado: ' + t; }
-
-// MAP
+// Crear mapa
 const map = L.map('map').setView([-34.6037, -58.3816], 12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
   attribution:'&copy; OpenStreetMap'
 }).addTo(map);
 
-let markerGroup = L.featureGroup().addTo(map);
+// Ícono naranja
+const orangeIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25,41],
+  iconAnchor: [12,41],
+  popupAnchor: [1,-34],
+  shadowSize: [41,41]
+});
 
-// helpers storage
+const lista = document.getElementById('lista');
+const markerGroup = L.featureGroup().addTo(map);
+
 function loadStored(){
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch(e){ return null; }
+  const raw = localStorage.getItem(STORAGE_KEY);
+  return raw ? JSON.parse(raw) : null;
 }
-function saveStored(obj){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+function saveStored(data){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
-// Geocoding via Nominatim (cortesía: no abusar)
 async function geocodeAddress(addr){
-  // esperar 1s entre requests para ser amable con el servicio
-  // (si la carga es mayor, considerá geocodificar offline)
   const url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(addr);
   try {
-    const res = await fetch(url, {headers:{'Accept':'application/json'}});
+    const res = await fetch(url,{headers:{'Accept':'application/json'}});
     const j = await res.json();
-    if(Array.isArray(j) && j.length>0){
-      return { lat: parseFloat(j[0].lat), lng: parseFloat(j[0].lon) };
-    }
-  } catch(e){
-    console.warn('geocode error', e);
-  }
+    if(j && j.length>0) return {lat:parseFloat(j[0].lat),lng:parseFloat(j[0].lon)};
+  }catch(e){console.error(e);}
   return null;
 }
 
-// Renderizar marcadores desde array de puntos
-function renderPoints(points){
+function renderListAndMap(places){
+  lista.innerHTML='';
   markerGroup.clearLayers();
-  points.forEach(p=>{
-    if(typeof p.lat === 'number' && typeof p.lng === 'number'){
-      const m = L.marker([p.lat,p.lng]).addTo(markerGroup);
-      m.bindPopup(`<b>${escapeHtml(p.name)}</b><br>${escapeHtml(p.direccion || '')}<br><small>${p.type || ''}</small>`);
-    }
+  places.forEach((p,i)=>{
+    if(!p.lat||!p.lng) return;
+    const li=document.createElement('li');
+    li.innerHTML=`<b>${p.name}</b><br><small>${p.direccion}</small>`;
+    li.onclick=()=>{ map.setView([p.lat,p.lng],15); };
+    lista.appendChild(li);
+    const m=L.marker([p.lat,p.lng],{icon:orangeIcon}).addTo(markerGroup);
+    m.bindPopup(`<b>${p.name}</b><br>${p.direccion}`);
   });
   if(markerGroup.getLayers().length>0) map.fitBounds(markerGroup.getBounds().pad(0.15));
 }
 
-// escape
-function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-/* ----------------- Inicialización ----------------- */
-// Si ya existe cache (con coords), usarla
 (async function init(){
-  setStatus('cargando datos...');
-  let store = loadStored();
-
+  let store=loadStored();
   if(!store){
-    // no hay cache: geocodificar la lista inicial y guardar
-    setStatus('geocodificando direcciones (1 sola vez). Por favor esperá...');
-    const results = [];
-    for(let i=0;i<initialPlaces.length;i++){
-      const p = initialPlaces[i];
-      setStatus(`geocodificando ${i+1}/${initialPlaces.length}: ${p.name}`);
-      const coords = await geocodeAddress(p.direccion);
-      // si falló, dejar null y seguir
-      if(coords){
-        results.push({ id: Date.now()+i, name:p.name, direccion:p.direccion, lat:coords.lat, lng:coords.lng, type:'turbo' });
-      } else {
-        results.push({ id: Date.now()+i, name:p.name, direccion:p.direccion, lat:null, lng:null, type:'turbo' });
-      }
-      // esperar 900ms para no saturar el servicio
+    const places=[];
+    for(const p of initialPlaces){
+      const coords=await geocodeAddress(p.direccion);
+      if(coords) places.push({...p,...coords});
       await new Promise(r=>setTimeout(r,900));
     }
-    store = { places: results, createdAt: (new Date()).toISOString() };
+    store={places};
     saveStored(store);
-    setStatus('geocodificación completa. Coordenadas guardadas localmente.');
-  } else {
-    setStatus('datos cargados desde cache local.');
   }
-
-  // render, solo los que tienen coords
-  renderPoints(store.places.filter(p=>p.lat && p.lng));
-  // actualizar UI global
-  window.MI_STORE = store;
+  renderListAndMap(store.places);
 })();
 
-/* ----------------- UI events ----------------- */
-document.getElementById('btnAddDir').addEventListener('click', async ()=>{
-  const name = document.getElementById('nombre').value.trim();
-  const direccion = document.getElementById('direccion').value.trim();
-  const tipo = document.getElementById('tipo').value;
-  if(!name || !direccion) return alert('Completá nombre y dirección.');
-  setStatus('Buscando dirección...');
-  const coords = await geocodeAddress(direccion);
-  if(!coords) return alert('No pude encontrar la dirección. Probalá con una variante (barrio, ciudad).');
-  const store = loadStored() || {places:[]};
-  const obj = { id: Date.now(), name, direccion, lat: coords.lat, lng: coords.lng, type: tipo };
-  store.places = store.places || [];
-  store.places.push(obj);
+document.getElementById('btnAdd').addEventListener('click',async()=>{
+  const name=document.getElementById('nombre').value.trim();
+  const direccion=document.getElementById('direccion').value.trim();
+  if(!name||!direccion)return alert('Completá nombre y dirección.');
+  const coords=await geocodeAddress(direccion);
+  if(!coords)return alert('No se encontró la dirección.');
+  const store=loadStored()||{places:[]};
+  store.places.push({...coords,name,direccion});
   saveStored(store);
-  renderPoints(store.places.filter(p=>p.lat && p.lng));
-  alert('Guardado ✅');
-  setStatus('dato agregado y guardado localmente.');
+  renderListAndMap(store.places);
+  alert('Dirección agregada ✅');
 });
-
-document.getElementById('btnAddCoords').addEventListener('click', ()=>{
-  const name = document.getElementById('nombre').value.trim();
-  const lat = parseFloat(document.getElementById('lat').value);
-  const lng = parseFloat(document.getElementById('lng').value);
-  const tipo = document.getElementById('tipo').value;
-  if(!name || isNaN(lat) || isNaN(lng)) return alert('Completá nombre y coords válidas.');
-  const store = loadStored() || {places:[]};
-  const obj = { id: Date.now(), name, direccion:'', lat, lng, type: tipo };
-  store.places = store.places || [];
-  store.places.push(obj);
-  saveStored(store);
-  renderPoints(store.places.filter(p=>p.lat && p.lng));
-  alert('Guardado ✅');
-  setStatus('dato agregado y guardado localmente.');
-});
-
-document.getElementById('btnExport').addEventListener('click', async ()=>{
-  const store = loadStored() || {places:[]};
-  const text = JSON.stringify(store.places, null, 2);
-  try {
-    await navigator.clipboard.writeText(text);
-    alert('JSON copiado al portapapeles. Pegalo en tu nota para respaldo.');
-  } catch(e){
-    const w = window.open();
-    w.document.write('<pre>'+escapeHtml(text)+'</pre>');
-    alert('No pude copiar automáticamente: abrí la ventana nueva y copialo manualmente.');
-  }
-});
-
-document.getElementById('btnImport').addEventListener('click', ()=>{
-  const raw = prompt('Pegá el JSON (array de objetos con name, direccion, lat, lng, type). Reemplaza todo:');
-  if(!raw) return;
-  try {
-    const arr = JSON.parse(raw);
-    if(!Array.isArray(arr)) throw 'Formato inválido';
-    const store = { places: arr.map((p,i)=>({ id:p.id||Date.now()+i, name:p.name||'', direccion:p.direccion||'', lat:p.lat||null, lng:p.lng||null, type:p.type||'turbo' })) };
-    saveStored(store);
-    renderPoints(store.places.filter(p=>p.lat && p.lng));
-    alert('Importado correctamente.');
-    setStatus('importado desde JSON.');
-  } catch(err){
-    alert('Error al importar JSON: '+err);
-  }
-});
-
-document.getElementById('btnForce').addEventListener('click', ()=>{
-  if(!confirm('Esto borrará la cache local y volverá a geocodificar TODAS las direcciones predefinidas. Continuar?')) return;
-  localStorage.removeItem(STORAGE_KEY);
-  location.reload();
-});
-
-document.getElementById('btnClear').addEventListener('click', ()=>{
-  if(!confirm('Borrar todos los puntos guardados en este navegador?')) return;
-  localStorage.removeItem(STORAGE_KEY);
-  markerGroup.clearLayers();
-  setStatus('cache borrada. Recargá la página para re-geocodificar.');
-});
-
-/* ------------------------------------------------ */
 </script>
 </body>
 </html>
