@@ -32,7 +32,7 @@
       <option value="yamarket">YouMarket</option>
       <option value="deposito">Depósito</option>
     </select>
-    <button id="btnAdd">Agregar / Guardar</button>
+   <button onclick="agregarLugarConDireccion()">Agregar / Guardar</button>
     <button id="btnClear">Borrar todo</button>
     <button id="btnExport">Exportar (copiar JSON)</button>
     <button id="btnImport">Importar JSON (pegar)</button>
@@ -153,6 +153,32 @@
 
   // al cargar la página, dibujar todo
   drawAll();
+  // 🗺️ Convertir dirección en coordenadas con Nominatim
+async function buscarDireccion(direccion) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion)}`;
+  const resp = await fetch(url);
+  const data = await resp.json();
+  if (data.length > 0) {
+    return {
+      lat: parseFloat(data[0].lat),
+      lng: parseFloat(data[0].lon)
+    };
+  } else {
+    alert("No se encontró la dirección.");
+    return null;
+  }
+}
+async function agregarLugarConDireccion() {
+  const nombre = document.querySelectorAll('input')[0].value;
+  const direccion = document.querySelectorAll('input')[1].value;
+  const tipo = document.querySelector('select').value;
+
+  const coords = await buscarDireccion(direccion);
+  if (!coords) return;
+
+  agregarMarcador(nombre, coords.lat, coords.lng, tipo);
+  alert("✅ Lugar agregado por dirección: " + direccion);
+}
 </script>
 </body>
 </html>
