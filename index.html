@@ -1,143 +1,150 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mappita</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>
-  body { font-family: Arial, sans-serif; margin: 0; background: #fafafa; }
-  #map { height: 75vh; width: 100%; }
-  h1 { text-align: center; color: #ff6600; margin-top: 10px; }
-  form { display: flex; gap: 8px; justify-content: center; margin: 10px; flex-wrap: wrap; }
-  input, select, button {
-    padding: 8px; border: 1px solid #ccc; border-radius: 4px;
-  }
-  button { background-color: #ff6600; color: white; cursor: pointer; border: none; }
-  button:hover { background-color: #e65c00; }
-  ul { list-style: none; padding: 0; max-width: 600px; margin: 10px auto; }
-  li {
-    background: white; margin: 6px 0; padding: 8px;
-    border-radius: 5px; cursor: pointer; border: 1px solid #eee;
-  }
-  li:hover { background: #fff3e6; }
-  #locate-btn {
-    position: fixed;
-    bottom: 20px; right: 20px;
-    background-color: #ff6600; color: white;
-    border: none; border-radius: 50%;
-    width: 50px; height: 50px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-    cursor: pointer; font-size: 24px;
-  }
-  #locate-btn:hover { background-color: #e65c00; }
+  body { font-family: Arial; margin: 0; padding: 0; }
+  #map { height: 80vh; width: 100%; }
+  #controls { padding: 10px; background: #fff; }
+  #addForm input { padding: 5px; margin: 5px; }
+  .location-item { margin: 6px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+  .btn { cursor: pointer; padding: 4px 8px; border: none; border-radius: 5px; }
+  .btn-edit { background: #ffa500; color: white; }
+  .btn-view { background: #007bff; color: white; }
+  .btn-locate { position: absolute; bottom: 20px; right: 20px; background: #007bff; color: #fff; padding: 10px; border-radius: 50%; cursor: pointer; border: none; font-size: 18px; }
 </style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 </head>
 <body>
-<h1>Mappita</h1>
+<h2 style="text-align:center;">🗺️ Mappita</h2>
 
-<form id="form">
-  <select id="tipo">
-    <option value="Rappi Turbo">Rappi Turbo</option>
-    <option value="Otro">Otro</option>
-  </select>
-  <input id="nombre" type="text" placeholder="Nombre del lugar" required />
-  <input id="direccion" type="text" placeholder="Dirección" required />
-  <button type="submit">Agregar</button>
-</form>
+<div id="controls">
+  <form id="addForm">
+    <input type="text" id="name" placeholder="Nombre (ej. Rappi Turbo Palermo)" required>
+    <input type="text" id="address" placeholder="Dirección" required>
+    <button type="submit" class="btn">➕ Agregar</button>
+  </form>
+  <div id="locationsList"></div>
+</div>
 
 <div id="map"></div>
-<ul id="lista"></ul>
+<button id="locateBtn" class="btn-locate">📍</button>
 
-<button id="locate-btn" title="Ver mi ubicación">📍</button>
-
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-// Coordenadas verificadas manualmente (todas de CABA)
-const lugares = [
-  { nombre: "Rappi Turbo Almagro", coords: [-34.6051, -58.4094] },
-  { nombre: "Rappi Turbo San Juan", coords: [-34.6293, -58.4086] },
-  { nombre: "Rappi Turbo San Martin", coords: [-34.6048, -58.4703] },
-  { nombre: "Rappi Turbo Humboldt", coords: [-34.5862, -58.4362] },
-  { nombre: "Rappi Turbo Forest", coords: [-34.5847, -58.4662] },
-  { nombre: "Rappi Turbo Caballito", coords: [-34.6271, -58.4358] },
-  { nombre: "Rappi Turbo Lavalle", coords: [-34.6023, -58.3965] },
-  { nombre: "Rappi Turbo Las Heras", coords: [-34.5897, -58.4004] },
-  { nombre: "Rappi Turbo Baez", coords: [-34.5657, -58.4368] },
-  { nombre: "Rappi Turbo Monroe", coords: [-34.5577, -58.4608] },
-  { nombre: "Rappi Turbo Belgrano", coords: [-34.6137, -58.3834] },
-  { nombre: "Rappi Turbo Rivadavia", coords: [-34.6324, -58.4844] },
+// === 📍 CONFIGURACIÓN INICIAL ===
+const defaultLocations = [
+  { name: "Rappi Turbo Almagro", address: "Tte. Gral. Juan Domingo Perón 3341, C1198 CABA" },
+  { name: "Rappi Turbo San Juan", address: "Av. San Juan 3536, C1233ABS CABA" },
+  { name: "Rappi Turbo San Martin", address: "Av. S. Martín 2011, C1416 CABA" },
+  { name: "Rappi Turbo Humboldt", address: "Humboldt 1877, C1414CTS CABA" },
+  { name: "Rappi Turbo Forest", address: "Av. Forest 930, C1427CET CABA" },
+  { name: "Rappi Turbo Caballito", address: "Del Barco Centenera 193, C1424AMC CABA" },
+  { name: "Rappi Turbo Lavalle", address: "Lavalle 2124, C1051ABH CABA" },
+  { name: "Rappi Turbo Las Heras", address: "Av. Gral. Las Heras 2299, C1127AAE CABA" },
+  { name: "Rappi Turbo Baez", address: "Báez 243, C1426BRE CABA" },
+  { name: "Rappi Turbo Monroe", address: "Av. Monroe 1616, C1428BKT CABA" },
+  { name: "Rappi Turbo Belgrano", address: "Av. Belgrano 1154, C1092AAY CABA" },
+  { name: "Rappi Turbo Rivadavia", address: "Av. Rivadavia 8242, C1407DYR CABA" }
 ];
 
-const map = L.map('map').setView([-34.6037, -58.3816], 12);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19,
-}).addTo(map);
+let map = L.map('map').setView([-34.6037, -58.3816], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-const iconoNaranja = L.icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/252/252025.png',
-  iconSize: [30, 30],
-  iconAnchor: [15, 30],
-});
+let markers = {};
+let locations = JSON.parse(localStorage.getItem("mappitaLocations")) || [...defaultLocations];
 
-function agregarMarcador(nombre, coords) {
-  const marker = L.marker(coords, { icon: iconoNaranja })
-    .addTo(map)
-    .bindPopup(`<b>${nombre}</b>`);
-
-  const li = document.createElement('li');
-  li.textContent = nombre;
-  li.onclick = () => {
-    map.setView(coords, 16);
-    marker.openPopup();
-  };
-  document.getElementById('lista').appendChild(li);
+// === 🧠 FUNCIONES ===
+function saveToLocalStorage() {
+  localStorage.setItem("mappitaLocations", JSON.stringify(locations));
 }
 
-function inicializar() {
-  lugares.forEach(lugar => agregarMarcador(lugar.nombre, lugar.coords));
+function renderLocations() {
+  const list = document.getElementById("locationsList");
+  list.innerHTML = "";
+  locations.forEach((loc, i) => {
+    const div = document.createElement("div");
+    div.className = "location-item";
+    div.innerHTML = `<b>${loc.name}</b><br>${loc.address}<br>
+      <button class="btn btn-edit" onclick="editLocation(${i})">✏️ Editar</button>
+      <button class="btn btn-view" onclick="focusLocation(${i})">📍 Ver</button>`;
+    list.appendChild(div);
+  });
 }
 
-// Geocodificar nuevas direcciones agregadas por el usuario
-async function geocodificar(direccion) {
-  try {
-    const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion + ', Buenos Aires, Argentina')}`);
-    const data = await resp.json();
-    if (data && data[0]) return { lat: data[0].lat, lng: data[0].lon };
-  } catch (e) {
-    console.error(e);
-  }
+async function geocodeAddress(address) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.length > 0) return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
   return null;
 }
 
-document.getElementById('form').addEventListener('submit', async e => {
+async function addMarker(location, i) {
+  const coords = await geocodeAddress(location.address);
+  if (coords) {
+    const marker = L.marker(coords, {
+      icon: L.icon({
+        iconUrl: 'https://maps.google.com/mapfiles/ms/icons/orange-dot.png',
+        iconSize: [32, 32]
+      })
+    }).addTo(map).bindPopup(`<b>${location.name}</b><br>${location.address}`);
+    markers[i] = marker;
+  }
+}
+
+function focusLocation(i) {
+  if (markers[i]) map.setView(markers[i].getLatLng(), 15);
+  markers[i].openPopup();
+}
+
+async function editLocation(i) {
+  const newName = prompt("Nuevo nombre:", locations[i].name);
+  const newAddress = prompt("Nueva dirección:", locations[i].address);
+  if (newName && newAddress) {
+    locations[i].name = newName;
+    locations[i].address = newAddress;
+    if (markers[i]) map.removeLayer(markers[i]);
+    await addMarker(locations[i], i);
+    renderLocations();
+    saveToLocalStorage();
+  }
+}
+
+// === ➕ AGREGAR NUEVA DIRECCIÓN ===
+document.getElementById("addForm").addEventListener("submit", async e => {
   e.preventDefault();
-  const nombre = document.getElementById('nombre').value;
-  const direccion = document.getElementById('direccion').value;
-  const coords = await geocodificar(direccion);
-  if (!coords) return alert("No se encontró la dirección: " + direccion);
-  agregarMarcador(nombre, [coords.lat, coords.lng]);
+  const name = document.getElementById("name").value;
+  const address = document.getElementById("address").value;
+  const newLoc = { name, address };
+  locations.push(newLoc);
+  await addMarker(newLoc, locations.length - 1);
+  renderLocations();
+  saveToLocalStorage();
   e.target.reset();
 });
 
-inicializar();
-
-// Botón de ubicación actual
-let userMarker;
-document.getElementById('locate-btn').addEventListener('click', () => {
+// === 📍 UBICACIÓN ACTUAL ===
+document.getElementById("locateBtn").addEventListener("click", () => {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(pos => {
       const { latitude, longitude } = pos.coords;
-      if (userMarker) map.removeLayer(userMarker);
-      userMarker = L.marker([latitude, longitude]).addTo(map)
-        .bindPopup("📍 Estás aquí")
-        .openPopup();
       map.setView([latitude, longitude], 15);
-    }, () => alert("No se pudo acceder a tu ubicación"));
-  } else {
-    alert("Tu dispositivo no permite obtener ubicación");
-  }
+      L.marker([latitude, longitude])
+        .addTo(map)
+        .bindPopup("📍 Tu ubicación actual")
+        .openPopup();
+    }, err => alert("No se pudo acceder a la ubicación"));
+  } else alert("Tu navegador no soporta geolocalización");
 });
+
+// === 🔁 INICIALIZACIÓN ===
+(async () => {
+  renderLocations();
+  for (let i = 0; i < locations.length; i++) await addMarker(locations[i], i);
+})();
 </script>
 </body>
 </html>
