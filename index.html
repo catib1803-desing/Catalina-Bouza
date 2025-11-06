@@ -1,134 +1,130 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mapa Rappi Turbo</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<style>
-  html,body{height:100%;margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#fff;color:#333;}
-  #map{height:70vh;width:100%;border-top:1px solid #eee;}
-  .panel{padding:12px 14px;text-align:center;}
-  h2{margin:0 0 8px 0;font-size:18px;}
-  input,button{width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid #ddd;box-sizing:border-box;font-size:15px;}
-  button{background:#ff7f11;color:white;border:none;font-weight:600;}
-  button:active{opacity:0.7;}
-  ul{list-style:none;padding:0;margin:10px auto;max-width:450px;text-align:left;}
-  li{padding:8px;border-bottom:1px solid #f0f0f0;cursor:pointer;}
-  li:hover{background:#fff7f0;}
-  small{color:#777;font-size:13px;}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mapa de Rappi Turbos</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #fafafa;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    #map {
+      flex: 1;
+      border-top: 1px solid #ddd;
+    }
+    #list {
+      padding: 10px;
+      overflow-y: auto;
+      max-height: 40vh;
+    }
+    .item {
+      background: #fff;
+      margin-bottom: 8px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      box-shadow: 0 0 4px rgba(0,0,0,0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    button {
+      background: none;
+      border: none;
+      color: #ff6600;
+      font-size: 18px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
+  <div id="list"></div>
+  <div id="map"></div>
 
-<div class="panel">
-  <h2>Mapa Rappi Turbo</h2>
-  <input id="nombre" placeholder="Nombre (ej: Nuevo Turbo)">
-  <input id="direccion" placeholder="Dirección (ej: Av. Corrientes 1000, CABA)">
-  <button id="btnAdd">Agregar dirección</button>
-</div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([-34.6037, -58.3816], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19
+    }).addTo(map);
 
-<ul id="lista"></ul>
+    const orangeIcon = L.icon({
+      iconUrl: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
+      iconSize: [28, 28],
+    });
 
-<div id="map"></div>
+    const places = [
+      { name: "Rappi Turbo Almagro", direccion: "Tte. Gral. Juan Domingo Perón 3341, C1198, CABA" },
+      { name: "Rappi Turbo San Juan", direccion: "Av. San Juan 3536, C1233ABS, CABA" },
+      { name: "Rappi Turbo San Martin", direccion: "Av. San Martín 2011, Villa Gral. Mitre, CABA" },
+      { name: "Rappi Turbo Humboldt", direccion: "Humboldt 1877, Palermo, CABA" },
+      { name: "Rappi Turbo Forest", direccion: "Av. Forest 930, CABA" },
+      { name: "Rappi Turbo Caballito", direccion: "Del Barco Centenera 193, C1424AMC, CABA" },
+      { name: "Rappi Turbo Lavalle", direccion: "Lavalle 2124, C1051ABH, CABA" },
+      { name: "Rappi Turbo Las Heras", direccion: "Av. Gral. Las Heras 2299, Recoleta, CABA" },
+      { name: "Rappi Turbo Baez", direccion: "Báez 243, Las Cañitas, CABA" },
+      { name: "Rappi Turbo Monroe", direccion: "Av. Monroe 1616, esquina Montañeses, Belgrano, CABA" },
+      { name: "Rappi Turbo Belgrano", direccion: "Av. Belgrano 1154, C1092AAY, CABA" },
+      { name: "Rappi Turbo Rivadavia", direccion: "Av. Rivadavia 8242, C1407DYR, CABA" }
+    ];
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-const STORAGE_KEY = 'rappi_turbos_minimal_v1';
-const initialPlaces = [
-  { name: "Rappi Turbo Almagro", direccion: "Tte. Gral. Juan Domingo Perón 3341, C1198, CABA" },
-  { name: "Rappi Turbo San Juan", direccion: "Av. San Juan 3536, C1233ABS, CABA" },
-  { name: "Rappi Turbo San Martin", direccion: "Av. S. Martín 2011, C1416, CABA" },
-  { name: "Rappi Turbo Humboldt", direccion: "Humboldt 1877, C1414, CABA" },
-  { name: "Rappi Turbo Forest", direccion: "Av. Forest 930, C1427, CABA" },
-  { name: "Rappi Turbo Caballito", direccion: "Del Barco Centenera 193, C1424, CABA" },
-  { name: "Rappi Turbo Lavalle", direccion: "Lavalle 2124, C1051, CABA" },
-  { name: "Rappi Turbo Las Heras", direccion: "Av. Gral. Las Heras 2299, C1127, CABA" },
-  { name: "Rappi Turbo Baez", direccion: "Báez 243, C1426, CABA" },
-  { name: "Rappi Turbo Monroe", direccion: "Av. Monroe 1616, C1428BKT C1428BKT, Cdad. Autónoma de Buenos Aires" },
-  { name: "Rappi Turbo Belgrano", direccion: "Av. Belgrano 1154, C1092, CABA" },
-  { name: "Rappi Turbo Rivadavia", direccion: "Av. Rivadavia 8242, C1407, CABA" }
-];
-
-// Crear mapa
-const map = L.map('map').setView([-34.6037, -58.3816], 12);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-  attribution:'&copy; OpenStreetMap'
-}).addTo(map);
-
-// Ícono naranja
-const orangeIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25,41],
-  iconAnchor: [12,41],
-  popupAnchor: [1,-34],
-  shadowSize: [41,41]
-});
-
-const lista = document.getElementById('lista');
-const markerGroup = L.featureGroup().addTo(map);
-
-function loadStored(){
-  const raw = localStorage.getItem(STORAGE_KEY);
-  return raw ? JSON.parse(raw) : null;
-}
-function saveStored(data){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
-
-async function geocodeAddress(addr){
-  const url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(addr);
-  try {
-    const res = await fetch(url,{headers:{'Accept':'application/json'}});
-    const j = await res.json();
-    if(j && j.length>0) return {lat:parseFloat(j[0].lat),lng:parseFloat(j[0].lon)};
-  }catch(e){console.error(e);}
-  return null;
-}
-
-function renderListAndMap(places){
-  lista.innerHTML='';
-  markerGroup.clearLayers();
-  places.forEach((p,i)=>{
-    if(!p.lat||!p.lng) return;
-    const li=document.createElement('li');
-    li.innerHTML=`<b>${p.name}</b><br><small>${p.direccion}</small>`;
-    li.onclick=()=>{ map.setView([p.lat,p.lng],15); };
-    lista.appendChild(li);
-    const m=L.marker([p.lat,p.lng],{icon:orangeIcon}).addTo(markerGroup);
-    m.bindPopup(`<b>${p.name}</b><br>${p.direccion}`);
-  });
-  if(markerGroup.getLayers().length>0) map.fitBounds(markerGroup.getBounds().pad(0.15));
-}
-
-(async function init(){
-  let store=loadStored();
-  if(!store){
-    const places=[];
-    for(const p of initialPlaces){
-      const coords=await geocodeAddress(p.direccion);
-      if(coords) places.push({...p,...coords});
-      await new Promise(r=>setTimeout(r,900));
+    async function buscarDireccion(direccion) {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion)}, Buenos Aires`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.length === 0) return null;
+      return { lat: data[0].lat, lng: data[0].lon };
     }
-    store={places};
-    saveStored(store);
-  }
-  renderListAndMap(store.places);
-})();
 
-document.getElementById('btnAdd').addEventListener('click',async()=>{
-  const name=document.getElementById('nombre').value.trim();
-  const direccion=document.getElementById('direccion').value.trim();
-  if(!name||!direccion)return alert('Completá nombre y dirección.');
-  const coords=await geocodeAddress(direccion);
-  if(!coords)return alert('No se encontró la dirección.');
-  const store=loadStored()||{places:[]};
-  store.places.push({...coords,name,direccion});
-  saveStored(store);
-  renderListAndMap(store.places);
-  alert('Dirección agregada ✅');
-});
-</script>
+    async function cargarLugares() {
+      for (const place of places) {
+        const coords = await buscarDireccion(place.direccion);
+        if (!coords) continue;
+        const marker = L.marker([coords.lat, coords.lng], { icon: orangeIcon }).addTo(map);
+        marker.bindPopup(`<b>${place.name}</b><br>${place.direccion}`);
+      }
+      renderList();
+    }
+
+    function renderList() {
+      const listDiv = document.getElementById("list");
+      listDiv.innerHTML = "";
+      places.forEach((p, index) => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+          <div>
+            <strong>${p.name}</strong><br>
+            <small>${p.direccion}</small>
+          </div>
+          <button onclick="borrarLugar(${index})">❌</button>
+        `;
+        listDiv.appendChild(div);
+      });
+    }
+
+    function borrarLugar(index) {
+      places.splice(index, 1);
+      document.getElementById("list").innerHTML = "";
+      map.eachLayer(layer => {
+        if (layer instanceof L.Marker) map.removeLayer(layer);
+      });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19
+      }).addTo(map);
+      cargarLugares();
+    }
+
+    cargarLugares();
+  </script>
 </body>
 </html>
