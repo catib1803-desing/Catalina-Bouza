@@ -1,0 +1,159 @@
+
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Mi Mapa Interactivo</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  html,body{height:100%;margin:0;font-family:Arial}
+  #map{height:100vh;width:100%}
+  .panel{
+    position: absolute; left:10px; top:10px; z-index:1000;
+    background:#fff; padding:10px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.2);
+    width:260px;
+  }
+  .panel input, .panel select{width:100%; box-sizing:border-box; margin:6px 0; padding:6px}
+  .panel button{width:100%; margin-top:6px; padding:8px}
+  .hint{font-size:12px;color:#666;margin-top:6px}
+</style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div class="panel" id="panel">
+    <strong>Agregar / Guardar lugar</strong>
+    <input id="name" placeholder="Nombre (ej: Turbo Palermo)" />
+    <input id="lat" placeholder="Latitud (tocar mapa llena esto)" />
+    <input id="lng" placeholder="Longitud (tocar mapa llena esto)" />
+    <select id="type">
+      <option value="otro">Tipo: Otro</option>
+      <option value="turbo">Turbo (Rappi)</option>
+      <option value="yamarket">YouMarket</option>
+      <option value="deposito">Depósito</option>
+    </select>
+    <button id="btnAdd">Agregar / Guardar</button>
+    <button id="btnClear">Borrar todo</button>
+    <button id="btnExport">Exportar (copiar JSON)</button>
+    <button id="btnImport">Importar JSON (pegar)</button>
+    <div class="hint">Tocá en el mapa para completar lat/lng. Los datos quedan guardados en el iPhone (sin cuentas).</div>
+  </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  // ---- Config ----
+  const STORAGE_KEY = 'mi_mapa_puntos_v1';
+
+  // Iniciar mapa centrado en Buenos Aires
+  const map = L.map('map').setView([-34.60, -58.40], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  // Contenedor de marcadores
+  let markers = [];
+
+  // Cargar puntos desde localStorage
+  function loadPoints(){
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return [];
+    try { return JSON.parse(raw) } catch(e){ return [] }
+  }
+  // Guardar
+  function savePoints(arr){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+  }
+
+  // Dibujar marcadores
+  function drawAll(){
+    // limpiar marcadores previos
+    markers.forEach(m=>map.removeLayer(m));
+    markers = [];
+    const pts = loadPoints();
+    pts.forEach(p=>{
+      const mk = L.marker([p.lat,p.lng]).addTo(map);
+      mk.bindPopup(`<b>${escapeHtml(p.name)}</b><br/>${p.type}<br/>Lat: ${p.lat.toFixed(6)}<br/>Lng: ${p.lng.toFixed(6)}`);
+      markers.push(mk);
+    });
+    // ajustar vista si hay puntos
+    if(pts.length>0){
+      const group = L.featureGroup(markers);
+      map.fitBounds(group.getBounds().pad(0.2));
+    }
+  }
+
+  // Escape básico
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  // Cuando tocan el mapa: completar lat/lng
+  map.on('click', function(e){
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
+    document.getElementById('lat').value = lat.toFixed(6);
+    document.getElementById('lng').value = lng.toFixed(6);
+  });
+
+  // Botón Agregar
+  document.getElementById('btnAdd').addEventListener('click', ()=>{
+    const name = document.getElementById('name').value.trim();
+    const lat = parseFloat(document.getElementById('lat').value);
+    const lng = parseFloat(document.getElementById('lng').value);
+    const type = document.getElementById('type').value;
+    if(!name || isNaN(lat) || isNaN(lng)){
+      alert('Completá nombre y coordenadas válidas.');
+      return;
+    }
+    const pts = loadPoints();
+    pts.push({ id: Date.now(), name, lat, lng, type });
+    savePoints(pts);
+    drawAll();
+    document.getElementById('name').value='';
+    alert('Guardado ✅');
+  });
+
+  // Borrar todo
+  document.getElementById('btnClear').addEventListener('click', ()=>{
+    if(!confirm('Borrar todas las ubicaciones? Esto no se puede deshacer.')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    drawAll();
+  });
+
+  // Exportar (copiar JSON al portapapeles)
+  document.getElementById('btnExport').addEventListener('click', async ()=>{
+    const pts = loadPoints();
+    const text = JSON.stringify(pts, null, 2);
+    try {
+      await navigator.clipboard.writeText(text);
+      alert('JSON copiado al portapapeles. Podés pegarlo en una nota o enviarlo por mensaje.');
+    } catch(e){
+      // fallback: abrir en nueva ventana
+      const w = window.open();
+      w.document.write('<pre>'+escapeHtml(text)+'</pre>');
+      alert('No pude copiar automáticamente, abrí la ventana nueva y copialo manualmente.');
+    }
+  });
+
+  // Importar JSON (te pide pegar JSON)
+  document.getElementById('btnImport').addEventListener('click', ()=>{
+    const raw = prompt('Pegá el JSON de ubicaciones (array de objetos con name,lat,lng,type). Reemplaza todo.');
+    if(!raw) return;
+    try {
+      const arr = JSON.parse(raw);
+      if(!Array.isArray(arr)) throw 'Formato inválido';
+      // validar mínimos
+      const ok = arr.every(p=>p.name && !isNaN(p.lat) && !isNaN(p.lng));
+      if(!ok) throw 'Elementos con formato inválido';
+      savePoints(arr);
+      drawAll();
+      alert('Importado correctamente.');
+    } catch(err){
+      alert('Error al importar JSON: '+err);
+    }
+  });
+
+  // al cargar la página, dibujar todo
+  drawAll();
+</script>
+</body>
+</html>
