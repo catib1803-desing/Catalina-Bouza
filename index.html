@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>
   body { font-family: Arial, sans-serif; margin: 0; background: #fafafa; }
-  #map { height: 70vh; width: 100%; }
+  #map { height: 75vh; width: 100%; }
   h1 { text-align: center; color: #ff6600; margin-top: 10px; }
   form { display: flex; gap: 8px; justify-content: center; margin: 10px; flex-wrap: wrap; }
   input, select, button {
@@ -21,6 +21,16 @@
     border-radius: 5px; cursor: pointer; border: 1px solid #eee;
   }
   li:hover { background: #fff3e6; }
+  #locate-btn {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    background-color: #ff6600; color: white;
+    border: none; border-radius: 50%;
+    width: 50px; height: 50px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    cursor: pointer; font-size: 24px;
+  }
+  #locate-btn:hover { background-color: #e65c00; }
 </style>
 </head>
 <body>
@@ -39,21 +49,24 @@
 <div id="map"></div>
 <ul id="lista"></ul>
 
+<button id="locate-btn" title="Ver mi ubicación">📍</button>
+
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
+// Coordenadas verificadas manualmente (todas de CABA)
 const lugares = [
-  { nombre: "Rappi Turbo Almagro", direccion: "Tte. Gral. Juan D. Perón 3341, CABA" },
-  { nombre: "Rappi Turbo San Juan", direccion: "Av. San Juan 3536, CABA" },
-  { nombre: "Rappi Turbo San Martin", direccion: "Av. San Martín 2011, CABA" },
-  { nombre: "Rappi Turbo Humboldt", direccion: "Humboldt 1877, Palermo, CABA" },
-  { nombre: "Rappi Turbo Forest", direccion: "Av. Forest 930, CABA" },
-  { nombre: "Rappi Turbo Caballito", direccion: "Del Barco Centenera 193, CABA" },
-  { nombre: "Rappi Turbo Lavalle", direccion: "Lavalle 2124, CABA" },
-  { nombre: "Rappi Turbo Las Heras", direccion: "Av. Gral. Las Heras 2299, CABA" },
-  { nombre: "Rappi Turbo Baez", direccion: "Báez 243, Las Cañitas, CABA" },
-  { nombre: "Rappi Turbo Monroe", direccion: "Av. Monroe y Montañeses, CABA" },
-  { nombre: "Rappi Turbo Belgrano", direccion: "Av. Belgrano 1154, CABA" },
-  { nombre: "Rappi Turbo Rivadavia", direccion: "Av. Rivadavia 8242, CABA" },
+  { nombre: "Rappi Turbo Almagro", coords: [-34.6051, -58.4094] },
+  { nombre: "Rappi Turbo San Juan", coords: [-34.6293, -58.4086] },
+  { nombre: "Rappi Turbo San Martin", coords: [-34.6048, -58.4703] },
+  { nombre: "Rappi Turbo Humboldt", coords: [-34.5862, -58.4362] },
+  { nombre: "Rappi Turbo Forest", coords: [-34.5847, -58.4662] },
+  { nombre: "Rappi Turbo Caballito", coords: [-34.6271, -58.4358] },
+  { nombre: "Rappi Turbo Lavalle", coords: [-34.6023, -58.3965] },
+  { nombre: "Rappi Turbo Las Heras", coords: [-34.5897, -58.4004] },
+  { nombre: "Rappi Turbo Baez", coords: [-34.5657, -58.4368] },
+  { nombre: "Rappi Turbo Monroe", coords: [-34.5577, -58.4608] },
+  { nombre: "Rappi Turbo Belgrano", coords: [-34.6137, -58.3834] },
+  { nombre: "Rappi Turbo Rivadavia", coords: [-34.6324, -58.4844] },
 ];
 
 const map = L.map('map').setView([-34.6037, -58.3816], 12);
@@ -67,12 +80,25 @@ const iconoNaranja = L.icon({
   iconAnchor: [15, 30],
 });
 
-const iconoGris = L.icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/252/252035.png',
-  iconSize: [30, 30],
-  iconAnchor: [15, 30],
-});
+function agregarMarcador(nombre, coords) {
+  const marker = L.marker(coords, { icon: iconoNaranja })
+    .addTo(map)
+    .bindPopup(`<b>${nombre}</b>`);
 
+  const li = document.createElement('li');
+  li.textContent = nombre;
+  li.onclick = () => {
+    map.setView(coords, 16);
+    marker.openPopup();
+  };
+  document.getElementById('lista').appendChild(li);
+}
+
+function inicializar() {
+  lugares.forEach(lugar => agregarMarcador(lugar.nombre, lugar.coords));
+}
+
+// Geocodificar nuevas direcciones agregadas por el usuario
 async function geocodificar(direccion) {
   try {
     const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion + ', Buenos Aires, Argentina')}`);
@@ -84,52 +110,34 @@ async function geocodificar(direccion) {
   return null;
 }
 
-async function agregarMarcador(nombre, direccion, tipo) {
-  const coords = await geocodificar(direccion);
-  const icono = coords ? iconoNaranja : iconoGris;
-  const marker = L.marker(coords ? [coords.lat, coords.lng] : [-34.6, -58.45], { icon: icono })
-    .addTo(map)
-    .bindPopup(`<b>${nombre}</b><br>${direccion}`);
-
-  const li = document.createElement('li');
-  li.textContent = `${nombre} - ${direccion}`;
-  li.onclick = () => {
-    map.setView(coords ? [coords.lat, coords.lng] : [-34.6, -58.45], 15);
-    marker.openPopup();
-  };
-  document.getElementById('lista').appendChild(li);
-}
-
-async function inicializar() {
-  for (const lugar of lugares) {
-    await agregarMarcador(lugar.nombre, lugar.direccion, "Rappi Turbo");
-  }
-}
-
-// Mostrar ubicación actual
-if (navigator.geolocation) {
-  navigator.geolocation.getCurrentPosition(pos => {
-    const { latitude, longitude } = pos.coords;
-    L.marker([latitude, longitude])
-      .addTo(map)
-      .bindPopup("📍 Tu ubicación actual")
-      .openPopup();
-    map.setView([latitude, longitude], 14);
-  }, () => {
-    console.warn("No se pudo acceder a tu ubicación");
-  });
-}
-
 document.getElementById('form').addEventListener('submit', async e => {
   e.preventDefault();
   const nombre = document.getElementById('nombre').value;
   const direccion = document.getElementById('direccion').value;
-  const tipo = document.getElementById('tipo').value;
-  await agregarMarcador(nombre, direccion, tipo);
+  const coords = await geocodificar(direccion);
+  if (!coords) return alert("No se encontró la dirección: " + direccion);
+  agregarMarcador(nombre, [coords.lat, coords.lng]);
   e.target.reset();
 });
 
 inicializar();
+
+// Botón de ubicación actual
+let userMarker;
+document.getElementById('locate-btn').addEventListener('click', () => {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const { latitude, longitude } = pos.coords;
+      if (userMarker) map.removeLayer(userMarker);
+      userMarker = L.marker([latitude, longitude]).addTo(map)
+        .bindPopup("📍 Estás aquí")
+        .openPopup();
+      map.setView([latitude, longitude], 15);
+    }, () => alert("No se pudo acceder a tu ubicación"));
+  } else {
+    alert("Tu dispositivo no permite obtener ubicación");
+  }
+});
 </script>
 </body>
 </html>
