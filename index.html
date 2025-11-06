@@ -4,37 +4,133 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mappita</title>
-<style>
-  body { font-family: Arial; margin: 0; padding: 0; }
-  #map { height: 80vh; width: 100%; }
-  #controls { padding: 10px; background: #fff; }
-  #addForm input { padding: 5px; margin: 5px; }
-  .location-item { margin: 6px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-  .btn { cursor: pointer; padding: 4px 8px; border: none; border-radius: 5px; }
-  .btn-edit { background: #ffa500; color: white; }
-  .btn-view { background: #007bff; color: white; }
-  .btn-locate { position: absolute; bottom: 20px; right: 20px; background: #007bff; color: #fff; padding: 10px; border-radius: 50%; cursor: pointer; border: none; font-size: 18px; }
-</style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<style>
+  body {
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    background: #fafafa;
+    color: #333;
+  }
+
+  header {
+    background: #ff8c00;
+    color: white;
+    padding: 15px;
+    text-align: center;
+    font-size: 22px;
+    letter-spacing: 1px;
+  }
+
+  #map {
+    height: 75vh;
+    width: 100%;
+  }
+
+  #controls {
+    background: #fff;
+    border-top: 1px solid #ddd;
+    padding: 10px;
+  }
+
+  #addForm {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  #addForm input {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+  }
+
+  #addForm button {
+    background: #ff8c00;
+    border: none;
+    color: #fff;
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+  }
+
+  details {
+    background: #fff;
+    border-radius: 8px;
+    margin-top: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  summary {
+    list-style: none;
+    cursor: pointer;
+    font-weight: bold;
+    padding: 10px;
+    background: #ff8c00;
+    color: white;
+    border-radius: 8px 8px 0 0;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  #locationsList div {
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+  }
+
+  .btn {
+    cursor: pointer;
+    padding: 5px 8px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-top: 5px;
+  }
+
+  .btn-edit { background: #ff8c00; color: #fff; }
+  .btn-view { background: #007bff; color: #fff; }
+
+  #locateBtn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #ff8c00;
+    color: #fff;
+    padding: 14px;
+    border-radius: 50%;
+    border: none;
+    font-size: 20px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+    cursor: pointer;
+  }
+</style>
 </head>
 <body>
-<h2 style="text-align:center;">🗺️ Mappita</h2>
+
+<header>🗺️ Mappita</header>
+
+<div id="map"></div>
 
 <div id="controls">
   <form id="addForm">
     <input type="text" id="name" placeholder="Nombre (ej. Rappi Turbo Palermo)" required>
     <input type="text" id="address" placeholder="Dirección" required>
-    <button type="submit" class="btn">➕ Agregar</button>
+    <button type="submit">➕</button>
   </form>
-  <div id="locationsList"></div>
+
+  <details open>
+    <summary>📍 Ver ubicaciones</summary>
+    <div id="locationsList"></div>
+  </details>
 </div>
 
-<div id="map"></div>
-<button id="locateBtn" class="btn-locate">📍</button>
+<button id="locateBtn">📍</button>
 
 <script>
-// === 📍 CONFIGURACIÓN INICIAL ===
 const defaultLocations = [
   { name: "Rappi Turbo Almagro", address: "Tte. Gral. Juan Domingo Perón 3341, C1198 CABA" },
   { name: "Rappi Turbo San Juan", address: "Av. San Juan 3536, C1233ABS CABA" },
@@ -56,7 +152,6 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 
 let markers = {};
 let locations = JSON.parse(localStorage.getItem("mappitaLocations")) || [...defaultLocations];
 
-// === 🧠 FUNCIONES ===
 function saveToLocalStorage() {
   localStorage.setItem("mappitaLocations", JSON.stringify(locations));
 }
@@ -66,7 +161,6 @@ function renderLocations() {
   list.innerHTML = "";
   locations.forEach((loc, i) => {
     const div = document.createElement("div");
-    div.className = "location-item";
     div.innerHTML = `<b>${loc.name}</b><br>${loc.address}<br>
       <button class="btn btn-edit" onclick="editLocation(${i})">✏️ Editar</button>
       <button class="btn btn-view" onclick="focusLocation(${i})">📍 Ver</button>`;
@@ -96,8 +190,10 @@ async function addMarker(location, i) {
 }
 
 function focusLocation(i) {
-  if (markers[i]) map.setView(markers[i].getLatLng(), 15);
-  markers[i].openPopup();
+  if (markers[i]) {
+    map.setView(markers[i].getLatLng(), 15);
+    markers[i].openPopup();
+  }
 }
 
 async function editLocation(i) {
@@ -113,7 +209,6 @@ async function editLocation(i) {
   }
 }
 
-// === ➕ AGREGAR NUEVA DIRECCIÓN ===
 document.getElementById("addForm").addEventListener("submit", async e => {
   e.preventDefault();
   const name = document.getElementById("name").value;
@@ -126,7 +221,6 @@ document.getElementById("addForm").addEventListener("submit", async e => {
   e.target.reset();
 });
 
-// === 📍 UBICACIÓN ACTUAL ===
 document.getElementById("locateBtn").addEventListener("click", () => {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(pos => {
@@ -136,11 +230,10 @@ document.getElementById("locateBtn").addEventListener("click", () => {
         .addTo(map)
         .bindPopup("📍 Tu ubicación actual")
         .openPopup();
-    }, err => alert("No se pudo acceder a la ubicación"));
+    }, () => alert("No se pudo acceder a la ubicación"));
   } else alert("Tu navegador no soporta geolocalización");
 });
 
-// === 🔁 INICIALIZACIÓN ===
 (async () => {
   renderLocations();
   for (let i = 0; i < locations.length; i++) await addMarker(locations[i], i);
